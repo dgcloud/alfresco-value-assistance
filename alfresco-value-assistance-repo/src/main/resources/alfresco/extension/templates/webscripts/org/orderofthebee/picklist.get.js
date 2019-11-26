@@ -9,16 +9,16 @@ function find(valuesArray, value) {
 }
 
 function fixEncodedText(text) {
-    var fixedText;
-    try{
-        // If the string is UTF-8, this will work and not throw an error.
-        fixedText = decodeURIComponent(escape(text));
-    }catch(e){
-        // If it isn't, an error will be thrown, and we can asume that we have an ISO string.
-        fixedText = text;
-    }
+	var fixedText;
+	try{
+		// If the string is UTF-8, this will work and not throw an error.
+		fixedText = decodeURIComponent(escape(text));
+	}catch(e){
+		// If it isn't, an error will be thrown, and we can asume that we have an ISO string.
+		fixedText = text;
+	}
 
-    return fixedText;
+	return fixedText;
 }
 
 function main() {
@@ -28,6 +28,7 @@ function main() {
 	var includeBlankItem;
 	var loadLabels;
 	var initialValues;
+	var sortDirection;
 
 	if (args.name === null) {
 		status.code = 500;
@@ -67,25 +68,29 @@ function main() {
 
 	var filterValue = args[valueParameter];
 
+	if (args.sort == 'desc' || args.sort == 'asc') {
+		sortDirection = args.sort;
+	}
+
 	model.picklistItems = getPickListItems(pickListName, pickListLevel,
 			includeBlankItem, loadLabels, initialValues, valueParameter,
-			filterValue);
+			filterValue, sortDirection);
 }
 
 function getPickListItems(pickListName, pickListLevel, includeBlankItem,
-		loadLabels, initialValues, valueParameter, filterValue) {
+		loadLabels, initialValues, valueParameter, filterValue, sortDirection) {
 
-    var fixedPickListName = fixEncodedText(pickListName);
+	var fixedPickListName = fixEncodedText(pickListName);
 
 	var dataListQuery = 'TYPE:"{http://www.alfresco.org/model/datalist/1.0}dataList"';
-    dataListQuery = dataListQuery + ' AND =cm:title:"' + fixedPickListName + '"';
+	dataListQuery = dataListQuery + ' AND =cm:title:"' + fixedPickListName + '"';
 
 	var dataListSearchParameters = {
-       query: dataListQuery,
-       language: "fts-alfresco",
-       page: {maxItems: 1000},
-       templates: []
-    };
+		query: dataListQuery,
+		language: "fts-alfresco",
+		page: {maxItems: 1000},
+		templates: []
+	};
 
 	var dataListResult = search.query(dataListSearchParameters);
 
@@ -137,7 +142,7 @@ function getPickListItems(pickListName, pickListLevel, includeBlankItem,
 			result.push(pickListItem);
 		} else {
 
-            var fixedFilterValue = fixEncodedText(filterValue);
+			var fixedFilterValue = fixEncodedText(filterValue);
 
 			if (typeof filterProperty !== "undefined") {
 				pickListItemsQuery = pickListItemsQuery + " AND "
@@ -148,6 +153,13 @@ function getPickListItems(pickListName, pickListLevel, includeBlankItem,
 				query : pickListItemsQuery,
 				language : "fts-alfresco"
 			};
+
+			if (sortDirection) {
+				pickListItemsSearchParameters['sort'] = [{
+					column: valueProperty,
+					ascending: (sortDirection == 'asc')
+				}];
+			}
 
 			var pickListItemsResult = search
 					.query(pickListItemsSearchParameters);
@@ -202,7 +214,7 @@ function getPickListItems(pickListName, pickListLevel, includeBlankItem,
 
 					// avoid adding repeated items
 					if (pickListItemValue && find(result, pickListItemValue) < 0) {
-                        var pickListItem = {};
+						var pickListItem = {};
 						pickListItem.value = pickListItemValue;
 						pickListItem.label = pickListItemLabel;
 
